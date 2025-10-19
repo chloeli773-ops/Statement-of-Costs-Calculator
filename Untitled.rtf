@@ -1,0 +1,492 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2822
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 <!DOCTYPE html>\
+<html lang="en">\
+<head>\
+    <meta charset="UTF-8">\
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">\
+    <title>Interactive Statement of Costs Calculator</title>\
+    <script src="https://cdn.tailwindcss.com"></script>\
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>\
+    <!-- Chosen Palette: Slate Gray, Sky Blue, and White -->\
+    <!-- Application Structure Plan: A responsive two-column dashboard layout was chosen for optimal user experience. The left column serves as a dedicated "control panel" for all user inputs (costs, fee earner rates), allowing users to easily modify parameters. The right column is a "results panel" that updates instantly in real-time, providing immediate feedback. This structure is superior to a spreadsheet for scenario planning as it separates inputs from outputs, preventing accidental formula changes and offering a cleaner, more intuitive user flow. The inclusion of summary charts and cards at the top of the results panel gives users a quick, high-level overview before they dive into the detailed tables. -->\
+    <!-- Visualization & Content Choices: \
+        - Report Info: Core cost figures (Total, Cat 1, Cat 4). Goal: User Input. Method: Labeled HTML number inputs. Interaction: Real-time updates on input change. Justification: Standard, accessible, and intuitive for data entry.\
+        - Report Info: Fee Earner rates. Goal: User Input. Method: Dynamically generated blocks for each fee earner with inputs for name and rate, plus add/remove buttons. Interaction: Users can add or remove fee earners, and all calculations update instantly. Justification: Offers flexibility beyond the fixed 3 fee earners in the source, which is a major usability improvement.\
+        - Report Info: Calculated cost breakdown by category. Goal: Inform/Compare. Method: Two Chart.js charts (Doughnut for overall cost split, Bar for fee earner hours). Interaction: Charts update dynamically with input changes. Justification: Provides a quick, visual summary of the key outcomes\'97the final cost distribution and whether the fee earner hours are balanced.\
+        - Report Info: Detailed cost/hour allocation. Goal: Inform. Method: HTML tables styled with Tailwind CSS. Interaction: All table cells update in real-time. Justification: Directly translates the core spreadsheet format, providing the necessary granular detail for the final statement of costs.\
+        - Library/Method: Vanilla JS for logic, Tailwind CSS for styling, Chart.js for visualizations. -->\
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->\
+    <style>\
+        body \{\
+            background-color: #f1f5f9; /* slate-100 */\
+        \}\
+        .input-group \{\
+            margin-bottom: 1rem;\
+        \}\
+        .input-label \{\
+            display: block;\
+            font-weight: 500;\
+            color: #475569; /* slate-600 */\
+            margin-bottom: 0.25rem;\
+        \}\
+        .input-field \{\
+            width: 100%;\
+            padding: 0.5rem 0.75rem;\
+            border: 1px solid #cbd5e1; /* slate-300 */\
+            border-radius: 0.375rem;\
+            transition: border-color 0.2s;\
+        \}\
+        .input-field:focus \{\
+            outline: none;\
+            border-color: #3b82f6; /* blue-500 */\
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4);\
+        \}\
+        .card \{\
+            background-color: white;\
+            border-radius: 0.75rem;\
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);\
+            padding: 1.5rem;\
+        \}\
+        .table-wrapper \{\
+            overflow-x: auto;\
+        \}\
+        table \{\
+            width: 100%;\
+            border-collapse: collapse;\
+        \}\
+        th, td \{\
+            padding: 0.75rem 1rem;\
+            text-align: left;\
+            border-bottom: 1px solid #e2e8f0; /* slate-200 */\
+        \}\
+        th \{\
+            background-color: #f8fafc; /* slate-50 */\
+            font-weight: 600;\
+            color: #475569; /* slate-600 */\
+        \}\
+        tbody tr:last-child td \{\
+            border-bottom: none;\
+        \}\
+        .chart-container \{\
+            position: relative;\
+            width: 100%;\
+            max-width: 400px;\
+            margin-left: auto;\
+            margin-right: auto;\
+            height: 300px;\
+            max-height: 400px;\
+        \}\
+\
+        @media (min-width: 768px) \{\
+            .chart-container \{\
+                height: 350px;\
+            \}\
+        \}\
+    </style>\
+</head>\
+<body class="font-sans antialiased text-slate-800">\
+\
+    <div class="container mx-auto p-4 md:p-8">\
+        <header class="mb-8">\
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-900">Interactive Statement of Costs Calculator</h1>\
+            <p class="text-slate-600 mt-2">Based on Hong Kong court rules for cost allocation.</p>\
+        </header>\
+\
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">\
+            \
+            <!-- Left Column: Inputs -->\
+            <aside class="lg:col-span-1">\
+                <div class="card sticky top-8">\
+                    <h2 class="text-2xl font-semibold mb-6 border-b pb-4 text-slate-800">Control Panel</h2>\
+                    \
+                    <div id="inputs-container">\
+                        <div class="input-group">\
+                            <label for="total-costs" class="input-label">Total Costs (Target)</label>\
+                            <input type="number" id="total-costs" class="input-field" value="100000" step="1000">\
+                        </div>\
+                        <div class="input-group">\
+                            <label for="cat1-costs" class="input-label">Category 1: Manual Work Cost</label>\
+                            <input type="number" id="cat1-costs" class="input-field" value="5000" step="100">\
+                        </div>\
+                         <div class="input-group">\
+                            <label for="cat4-costs" class="input-label">Category 4: Counsel Fee</label>\
+                            <input type="number" id="cat4-costs" class="input-field" value="20000" step="100">\
+                        </div>\
+                    </div>\
+\
+                    <div id="fee-earners-container" class="mt-8">\
+                        <h3 class="text-xl font-semibold mb-4 border-b pb-3 text-slate-700">Fee Earners</h3>\
+                        <div id="fee-earners-list"></div>\
+                        <button id="add-fee-earner" class="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">\
+                            + Add Fee Earner\
+                        </button>\
+                    </div>\
+                </div>\
+            </aside>\
+\
+            <!-- Right Column: Outputs -->\
+            <main class="lg:col-span-2 space-y-8">\
+                <div class="card">\
+                    <h2 class="text-2xl font-semibold mb-4 text-slate-800">Summary & Visuals</h2>\
+                    <p class="text-slate-600 mb-6">This section provides a high-level overview of the calculated cost allocations and the resulting hours per fee earner. All visuals and figures update automatically as you change the inputs in the control panel.</p>\
+                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 text-center">\
+                        <div class="bg-slate-50 p-4 rounded-lg">\
+                            <h4 class="font-semibold text-slate-600">Target (Cat 2+3)</h4>\
+                            <p id="summary-target-cost" class="text-2xl font-bold text-blue-600"></p>\
+                        </div>\
+                        <div class="bg-slate-50 p-4 rounded-lg">\
+                            <h4 class="font-semibold text-slate-600">Fixed Cost - Cat 2</h4>\
+                            <p id="summary-cat2-cost" class="text-2xl font-bold text-sky-600"></p>\
+                        </div>\
+                        <div class="bg-slate-50 p-4 rounded-lg">\
+                            <h4 class="font-semibold text-slate-600">Fixed Cost - Cat 3</h4>\
+                            <p id="summary-cat3-cost" class="text-2xl font-bold text-indigo-600"></p>\
+                        </div>\
+                    </div>\
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">\
+                        <div>\
+                            <h3 class="text-lg font-semibold text-center mb-2">Total Cost Breakdown</h3>\
+                             <div class="chart-container">\
+                                <canvas id="cost-breakdown-chart"></canvas>\
+                            </div>\
+                        </div>\
+                        <div>\
+                            <h3 class="text-lg font-semibold text-center mb-2">Total Hours per Fee Earner</h3>\
+                            <div class="chart-container h-full">\
+                                <canvas id="hours-chart"></canvas>\
+                            </div>\
+                        </div>\
+                    </div>\
+                </div>\
+\
+                <div class="card">\
+                    <h2 class="text-2xl font-semibold mb-4 text-slate-800">Detailed Calculations</h2>\
+                    <p class="text-slate-600 mb-6">The tables below show the specific costs and hours allocated to each fee earner for every sub-category, based on the fixed allocation rules. This provides the granular data needed for the final statement of costs.</p>\
+\
+                    <div id="results-container">\
+                        <!-- Category 2 Table -->\
+                        <div class="mb-8">\
+                            <h3 class="text-xl font-semibold mb-3 text-sky-700">Category 2: Communications</h3>\
+                            <div class="table-wrapper">\
+                                <table id="cat2-table">\
+                                    <thead>\
+                                        <tr>\
+                                            <th>Sub-Category</th>\
+                                            <th>Fee Earner</th>\
+                                            <th>Allocated Cost</th>\
+                                            <th>Calculated Hours</th>\
+                                        </tr>\
+                                    </thead>\
+                                    <tbody></tbody>\
+                                </table>\
+                            </div>\
+                        </div>\
+                        <!-- Category 3 Table -->\
+                        <div>\
+                            <h3 class="text-xl font-semibold mb-3 text-indigo-700">Category 3: Professional Work</h3>\
+                            <div class="table-wrapper">\
+                                <table id="cat3-table">\
+                                     <thead>\
+                                        <tr>\
+                                            <th>Sub-Category</th>\
+                                            <th>Fee Earner</th>\
+                                            <th>Allocated Cost</th>\
+                                            <th>Calculated Hours</th>\
+                                        </tr>\
+                                    </thead>\
+                                    <tbody></tbody>\
+                                </table>\
+                            </div>\
+                        </div>\
+                    </div>\
+                </div>\
+\
+                <div class="card">\
+                    <h2 class="text-2xl font-semibold mb-4 text-slate-800">Final Verification</h2>\
+                    <table class="w-full md:w-1/2">\
+                        <thead>\
+                           <tr>\
+                               <th>Item</th>\
+                               <th>Value</th>\
+                           </tr>\
+                        </thead>\
+                        <tbody>\
+                            <tr>\
+                                <td class="font-semibold">Target Combined Cost (Cat 2+3)</td>\
+                                <td id="verify-target"></td>\
+                            </tr>\
+                            <tr>\
+                                <td class="font-semibold">Grand Total Calculated (Cat 2+3)</td>\
+                                <td id="verify-calculated"></td>\
+                            </tr>\
+                            <tr>\
+                                <td class="font-semibold">Status</td>\
+                                <td id="verify-status"></td>\
+                            </tr>\
+                        </tbody>\
+                    </table>\
+                </div>\
+\
+            </main>\
+        </div>\
+    </div>\
+\
+<script>\
+const state = \{\
+    totalCosts: 100000,\
+    cat1Costs: 5000,\
+    cat4Costs: 20000,\
+    feeEarners: [\
+        \{ name: 'Senior Partner', rate: 5000 \},\
+        \{ name: 'Associate', rate: 2500 \},\
+        \{ name: 'Trainee', rate: 1000 \},\
+    ],\
+    allocations: \{\
+        cat2: \{\
+            percentage: 0.45,\
+            subCategories: [\
+                \{ name: '(i) Attendance on client', percentage: 0.50 \},\
+                \{ name: '(ii) Attendance on other side', percentage: 0.30 \},\
+                \{ name: '(iii) Attendance on counsel', percentage: 0.20 \},\
+            ]\
+        \},\
+        cat3: \{\
+            percentage: 0.55,\
+            subCategories: [\
+                \{ name: '(i) Preparation of documents', percentage: 0.40 \},\
+                \{ name: '(ii) Perusal of Documents', percentage: 0.30 \},\
+                \{ name: '(iii) Preparation for hearing', percentage: 0.15 \},\
+                \{ name: '(iv) Hearing including call-over', percentage: 0.15 \},\
+            ]\
+        \}\
+    \}\
+\};\
+\
+let costBreakdownChart, hoursChart;\
+\
+const formatCurrency = (value) => value.toLocaleString('en-US', \{ style: 'currency', currency: 'HKD', minimumFractionDigits: 2 \});\
+const formatHours = (value) => value.toFixed(2);\
+\
+function renderFeeEarners() \{\
+    const list = document.getElementById('fee-earners-list');\
+    list.innerHTML = '';\
+    state.feeEarners.forEach((fe, index) => \{\
+        const feDiv = document.createElement('div');\
+        feDiv.className = 'input-group grid grid-cols-1 sm:grid-cols-5 gap-2 items-end';\
+        feDiv.innerHTML = `\
+            <div class="sm:col-span-2">\
+                <label class="input-label text-sm">Name</label>\
+                <input type="text" class="input-field fe-name" data-index="$\{index\}" value="$\{fe.name\}">\
+            </div>\
+            <div class="sm:col-span-2">\
+                <label class="input-label text-sm">Rate (HKD)</label>\
+                <input type="number" class="input-field fe-rate" data-index="$\{index\}" value="$\{fe.rate\}" step="50">\
+            </div>\
+            <button class="remove-fee-earner bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-2 rounded-lg text-sm transition-colors sm:col-span-1" data-index="$\{index\}">Remove</button>\
+        `;\
+        list.appendChild(feDiv);\
+    \});\
+    addFeeEarnerEventListeners();\
+\}\
+\
+function calculateAndRender() \{\
+    state.totalCosts = parseFloat(document.getElementById('total-costs').value) || 0;\
+    state.cat1Costs = parseFloat(document.getElementById('cat1-costs').value) || 0;\
+    state.cat4Costs = parseFloat(document.getElementById('cat4-costs').value) || 0;\
+\
+    state.feeEarners.forEach((fe, index) => \{\
+        fe.name = document.querySelector(`.fe-name[data-index="$\{index\}"]`).value;\
+        fe.rate = parseFloat(document.querySelector(`.fe-rate[data-index="$\{index\}"]`).value) || 0;\
+    \});\
+    \
+    const targetCombinedCost = state.totalCosts - state.cat1Costs - state.cat4Costs;\
+    const cat2FixedCost = targetCombinedCost * state.allocations.cat2.percentage;\
+    const cat3FixedCost = targetCombinedCost * state.allocations.cat3.percentage;\
+    \
+    document.getElementById('summary-target-cost').textContent = formatCurrency(targetCombinedCost);\
+    document.getElementById('summary-cat2-cost').textContent = formatCurrency(cat2FixedCost);\
+    document.getElementById('summary-cat3-cost').textContent = formatCurrency(cat3FixedCost);\
+\
+    const cat2TableBody = document.querySelector('#cat2-table tbody');\
+    const cat3TableBody = document.querySelector('#cat3-table tbody');\
+    cat2TableBody.innerHTML = '';\
+    cat3TableBody.innerHTML = '';\
+    \
+    let grandTotalCalculated = 0;\
+    const feeEarnerTotals = state.feeEarners.map(fe => (\{ name: fe.name, hours: 0, cost: 0 \}));\
+\
+    const numFeeEarners = state.feeEarners.length > 0 ? state.feeEarners.length : 1;\
+    \
+    state.allocations.cat2.subCategories.forEach(subCat => \{\
+        const subCatCost = cat2FixedCost * subCat.percentage;\
+        state.feeEarners.forEach((fe, feIndex) => \{\
+            const allocatedCost = subCatCost / numFeeEarners;\
+            const hours = fe.rate > 0 ? allocatedCost / fe.rate : 0;\
+            grandTotalCalculated += allocatedCost;\
+            feeEarnerTotals[feIndex].hours += hours;\
+            feeEarnerTotals[feIndex].cost += allocatedCost;\
+\
+            const row = cat2TableBody.insertRow();\
+            row.innerHTML = `\
+                $\{feIndex === 0 ? `<td rowspan="$\{numFeeEarners\}" class="align-top font-medium">$\{subCat.name\} ($\{(subCat.percentage * 100)\}%)</td>` : ''\}\
+                <td>$\{fe.name\}</td>\
+                <td>$\{formatCurrency(allocatedCost)\}</td>\
+                <td>$\{formatHours(hours)\}</td>\
+            `;\
+        \});\
+    \});\
+\
+    state.allocations.cat3.subCategories.forEach(subCat => \{\
+        const subCatCost = cat3FixedCost * subCat.percentage;\
+        state.feeEarners.forEach((fe, feIndex) => \{\
+            const allocatedCost = subCatCost / numFeeEarners;\
+            const hours = fe.rate > 0 ? allocatedCost / fe.rate : 0;\
+            grandTotalCalculated += allocatedCost;\
+            feeEarnerTotals[feIndex].hours += hours;\
+            feeEarnerTotals[feIndex].cost += allocatedCost;\
+            \
+            const row = cat3TableBody.insertRow();\
+            row.innerHTML = `\
+                $\{feIndex === 0 ? `<td rowspan="$\{numFeeEarners\}" class="align-top font-medium">$\{subCat.name\} ($\{(subCat.percentage * 100)\}%)</td>` : ''\}\
+                <td>$\{fe.name\}</td>\
+                <td>$\{formatCurrency(allocatedCost)\}</td>\
+                <td>$\{formatHours(hours)\}</td>\
+            `;\
+        \});\
+    \});\
+\
+    document.getElementById('verify-target').textContent = formatCurrency(targetCombinedCost);\
+    document.getElementById('verify-calculated').textContent = formatCurrency(grandTotalCalculated);\
+    const statusEl = document.getElementById('verify-status');\
+    if (Math.abs(targetCombinedCost - grandTotalCalculated) < 0.01) \{\
+        statusEl.textContent = 'MATCH';\
+        statusEl.className = 'font-bold text-green-600';\
+    \} else \{\
+        statusEl.textContent = 'ERROR';\
+        statusEl.className = 'font-bold text-red-600';\
+    \}\
+\
+    updateCharts(feeEarnerTotals);\
+\}\
+\
+function updateCharts(feeEarnerTotals) \{\
+    const costData = [state.cat1Costs, state.cat4Costs];\
+    let cat2Total = 0;\
+    let cat3Total = 0;\
+\
+    const numFeeEarners = state.feeEarners.length > 0 ? state.feeEarners.length : 1;\
+\
+    state.allocations.cat2.subCategories.forEach(subCat => \{\
+        cat2Total += (state.totalCosts - state.cat1Costs - state.cat4Costs) * state.allocations.cat2.percentage * subCat.percentage;\
+    \});\
+     state.allocations.cat3.subCategories.forEach(subCat => \{\
+        cat3Total += (state.totalCosts - state.cat1Costs - state.cat4Costs) * state.allocations.cat3.percentage * subCat.percentage;\
+    \});\
+\
+    costData.splice(1, 0, (state.totalCosts - state.cat1Costs - state.cat4Costs) * state.allocations.cat2.percentage);\
+    costData.splice(2, 0, (state.totalCosts - state.cat1Costs - state.cat4Costs) * state.allocations.cat3.percentage);\
+\
+    costBreakdownChart.data.datasets[0].data = costData;\
+    costBreakdownChart.update();\
+\
+    hoursChart.data.labels = feeEarnerTotals.map(fe => fe.name);\
+    hoursChart.data.datasets[0].data = feeEarnerTotals.map(fe => fe.hours);\
+    hoursChart.update();\
+\}\
+\
+function setupCharts() \{\
+    const costCtx = document.getElementById('cost-breakdown-chart').getContext('2d');\
+    costBreakdownChart = new Chart(costCtx, \{\
+        type: 'doughnut',\
+        data: \{\
+            labels: ['Cat 1: Manual Work', 'Cat 2: Communications', 'Cat 3: Professional Work', 'Cat 4: Counsel Fee'],\
+            datasets: [\{\
+                label: 'Cost Breakdown',\
+                data: [],\
+                backgroundColor: ['#f59e0b', '#38bdf8', '#818cf8', '#a78bfa'],\
+                borderColor: '#ffffff',\
+                borderWidth: 2\
+            \}]\
+        \},\
+        options: \{\
+            responsive: true,\
+            maintainAspectRatio: false,\
+            plugins: \{\
+                legend: \{\
+                    position: 'bottom',\
+                \}\
+            \}\
+        \}\
+    \});\
+\
+    const hoursCtx = document.getElementById('hours-chart').getContext('2d');\
+    hoursChart = new Chart(hoursCtx, \{\
+        type: 'bar',\
+        data: \{\
+            labels: [],\
+            datasets: [\{\
+                label: 'Total Hours',\
+                data: [],\
+                backgroundColor: '#60a5fa',\
+                borderColor: '#3b82f6',\
+                borderWidth: 1\
+            \}]\
+        \},\
+        options: \{\
+            responsive: true,\
+            maintainAspectRatio: false,\
+            indexAxis: 'y',\
+            scales: \{\
+                x: \{\
+                    beginAtZero: true,\
+                    title: \{ display: true, text: 'Hours' \}\
+                \}\
+            \},\
+            plugins: \{\
+                legend: \{\
+                    display: false,\
+                \}\
+            \}\
+        \}\
+    \});\
+\}\
+\
+function addEventListeners() \{\
+    document.getElementById('inputs-container').addEventListener('input', calculateAndRender);\
+    document.getElementById('add-fee-earner').addEventListener('click', () => \{\
+        state.feeEarners.push(\{ name: `Fee Earner $\{state.feeEarners.length + 1\}`, rate: 1000 \});\
+        renderFeeEarners();\
+        calculateAndRender();\
+    \});\
+\}\
+\
+function addFeeEarnerEventListeners() \{\
+    document.querySelectorAll('.fe-name, .fe-rate').forEach(input => \{\
+        input.addEventListener('input', calculateAndRender);\
+    \});\
+    document.querySelectorAll('.remove-fee-earner').forEach(button => \{\
+        button.addEventListener('click', (e) => \{\
+            const index = parseInt(e.target.dataset.index);\
+            state.feeEarners.splice(index, 1);\
+            renderFeeEarners();\
+            calculateAndRender();\
+        \});\
+    \});\
+\}\
+\
+window.onload = () => \{\
+    renderFeeEarners();\
+    setupCharts();\
+    addEventListeners();\
+    calculateAndRender();\
+\};\
+</script>\
+</body>\
+</html>\
+}

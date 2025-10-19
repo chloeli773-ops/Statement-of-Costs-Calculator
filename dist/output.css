@@ -15,6 +15,9 @@
 .grid {
   display: grid;
 }
+.inline-block {
+  display: inline-block;
+}
 .table {
   display: table;
 }
